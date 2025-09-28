@@ -427,7 +427,7 @@ def parse_order():
 ```"""
 
         payload = {
-            'model': 'anthropic/claude-3.5-sonnet',
+            'model': 'x-ai/grok-4-fast:free',
             'messages': [
                 {
                     'role': 'system',

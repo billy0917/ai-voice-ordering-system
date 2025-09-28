@@ -277,7 +277,7 @@ def parse_order():
         }
         
         # 構建詳細的系統提示
-        system_prompt = """你是一個專業的港式茶餐廳點餐助手。請解析顧客的粵語點餐內容，並按以下格式返回JSON：
+        system_prompt = """你是一個專業的港式茶餐廳點餐助手，精通港式粵語和茶餐廳文化。請解析顧客的粵語點餐內容，並按以下格式返回JSON：
 
 {
   "success": true,
@@ -287,12 +287,21 @@ def parse_order():
         "name": "菜品名稱",
         "quantity": 數量,
         "unit_price": 預估價格,
-        "special_requirements": ["特殊要求1", "特殊要求2"],
+        "customizations": {
+          "甜度": "少甜/正常/甜/無糖/走糖/半糖",
+          "冰塊": "走冰/少冰/正常冰/多冰/室溫",
+          "溫度": "凍/熱/室溫",
+          "加料": "加檸檬/加蜂蜜/加奶/走奶等",
+          "份量": "大杯/中杯/小杯/加大"
+        },
+        "special_requirements": ["具體特殊要求"],
         "category": "主食/飲品/小食/甜品"
       }
     ],
     "total_price": 總價格,
-    "special_notes": "整體特殊說明"
+    "special_requests": ["整體特殊要求"],
+    "confidence": 0.0-1.0,
+    "clarification_needed": false
   },
   "upselling": {
     "suggestions": [
@@ -306,14 +315,89 @@ def parse_order():
   "original_text": "原始語音文本"
 }
 
-港式茶餐廳常見菜品和價格參考：
-- 炸豬扒飯：$45-55
-- 叉燒飯：$40-50  
-- 咖喱雞飯：$42-52
-- 港式奶茶：$18-25
-- 凍檸茶：$20-28
+## 專業茶餐廳知識庫
+
+### 常見定制選項：
+- **甜度：** 少甜、正常、甜、無糖、走糖、半糖
+- **冰塊：** 走冰、少冰、正常冰、多冰、室溫  
+- **溫度：** 凍、熱、室溫、溫
+- **加料：** 加檸檬、加蜂蜜、加薄荷、加奶、走奶
+- **份量：** 大杯、中杯、小杯、加大、正常
+
+### 港式茶餐廳菜品價格參考：
+**主食類：**
+- 炸豬扒飯：$48-55
+- 叉燒飯：$42-48
+- 咖喱雞飯：$45-52
+- 豉汁排骨飯：$46-53
+- 蒸蛋飯：$35-42
+- 白切雞飯：$45-52
+
+**飲品類：**
+- 港式奶茶：$22-28
+- 凍檸茶：$18-25
+- 凍檸水：$16-22
+- 凍華田：$20-26
+- 熱咖啡：$18-25
 - 凍可樂：$15-22
-- 西多士：$25-35"""
+
+**小食類：**
+- 西多士：$25-35
+- 菠蘿包：$12-18
+- 雞翼：$25-35
+
+### 解析要求：
+1. 精確識別所有定制要求（少甜、少冰、走冰等）
+2. 正確提取數量和項目名稱
+3. 根據定制調整價格（特殊要求可能+$2-5）
+4. 生成合理的追加銷售建議
+5. 如果有不清楚的地方，設置 clarification_needed: true
+
+### 例子：
+**輸入：** "唔該我要個炸豬扒飯加杯凍奶茶少甜走冰"
+**輸出：**
+```json
+{
+  "success": true,
+  "order": {
+    "items": [
+      {
+        "name": "炸豬扒飯",
+        "quantity": 1,
+        "unit_price": 48.0,
+        "customizations": {},
+        "special_requirements": [],
+        "category": "主食"
+      },
+      {
+        "name": "凍奶茶",
+        "quantity": 1,
+        "unit_price": 22.0,
+        "customizations": {
+          "甜度": "少甜",
+          "冰塊": "走冰"
+        },
+        "special_requirements": ["少甜", "走冰"],
+        "category": "飲品"
+      }
+    ],
+    "total_price": 70.0,
+    "special_requests": ["少甜走冰"],
+    "confidence": 0.95,
+    "clarification_needed": false
+  },
+  "upselling": {
+    "suggestions": [
+      {
+        "item": "薯條",
+        "reason": "炸豬扒飯配薯條很受歡迎",
+        "price": 18.0
+      }
+    ]
+  },
+  "original_text": "唔該我要個炸豬扒飯加杯凍奶茶少甜走冰"
+}
+```"""
 
         payload = {
             'model': 'anthropic/claude-3.5-sonnet',
@@ -349,6 +433,22 @@ def parse_order():
                 
                 # 確保返回格式正確
                 if isinstance(parsed_response, dict) and 'order' in parsed_response:
+                    # 確保每個訂單項目都有必要的字段
+                    if 'items' in parsed_response['order']:
+                        for item in parsed_response['order']['items']:
+                            if 'customizations' not in item:
+                                item['customizations'] = {}
+                            if 'special_requirements' not in item:
+                                item['special_requirements'] = []
+                    
+                    # 確保訂單有必要的字段
+                    if 'special_requests' not in parsed_response['order']:
+                        parsed_response['order']['special_requests'] = []
+                    if 'confidence' not in parsed_response['order']:
+                        parsed_response['order']['confidence'] = 0.8
+                    if 'clarification_needed' not in parsed_response['order']:
+                        parsed_response['order']['clarification_needed'] = False
+                    
                     # 確保 upselling 格式正確
                     if 'upselling' in parsed_response:
                         if isinstance(parsed_response['upselling'], list):
@@ -385,11 +485,15 @@ def parse_order():
                                     'name': '解析結果',
                                     'quantity': 1,
                                     'unit_price': 0,
+                                    'customizations': {},
                                     'special_requirements': [],
                                     'category': '其他'
                                 }
                             ],
                             'total_price': 0,
+                            'special_requests': [],
+                            'confidence': 0.8,
+                            'clarification_needed': False,
                             'special_notes': ai_response
                         },
                         'upselling': {'suggestions': []},
@@ -405,14 +509,18 @@ def parse_order():
                                 'name': '訂單解析',
                                 'quantity': 1,
                                 'unit_price': 0,
+                                'customizations': {},
                                 'special_requirements': [],
                                 'category': '解析結果'
                             }
                         ],
                         'total_price': 0,
+                        'special_requests': [],
+                        'confidence': 0.7,
+                        'clarification_needed': False,
                         'special_notes': ai_response
                     },
-                    'upselling': [],
+                    'upselling': {'suggestions': []},
                     'original_text': text,
                     'raw_ai_response': ai_response
                 }

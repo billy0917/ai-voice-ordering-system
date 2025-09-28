@@ -286,7 +286,7 @@ def parse_order():
       {
         "name": "菜品名稱",
         "quantity": 數量,
-        "price": 預估價格,
+        "unit_price": 預估價格,
         "special_requirements": ["特殊要求1", "特殊要求2"],
         "category": "主食/飲品/小食/甜品"
       }
@@ -298,7 +298,7 @@ def parse_order():
     {
       "item": "推薦商品",
       "reason": "推薦原因", 
-      "price": 價格
+      "unit_price": 價格
     }
   ],
   "original_text": "原始語音文本"
@@ -357,7 +357,7 @@ def parse_order():
                                 {
                                     'name': '解析結果',
                                     'quantity': 1,
-                                    'price': 0,
+                                    'unit_price': 0,
                                     'special_requirements': [],
                                     'category': '其他'
                                 }
@@ -377,7 +377,7 @@ def parse_order():
                             {
                                 'name': '訂單解析',
                                 'quantity': 1,
-                                'price': 0,
+                                'unit_price': 0,
                                 'special_requirements': [],
                                 'category': '解析結果'
                             }
@@ -446,8 +446,8 @@ def get_active_orders():
                 'id': f'ORD{int(current_time-3600)}001',
                 'status': 'preparing',
                 'items': [
-                    {'name': '炸豬扒飯', 'quantity': 1, 'price': 48},
-                    {'name': '凍可樂', 'quantity': 1, 'price': 18}
+                    {'name': '炸豬扒飯', 'quantity': 1, 'unit_price': 48},
+                    {'name': '凍可樂', 'quantity': 1, 'unit_price': 18}
                 ],
                 'total_price': 66,
                 'created_at': current_time - 3600,
@@ -457,8 +457,8 @@ def get_active_orders():
                 'id': f'ORD{int(current_time-1800)}002', 
                 'status': 'confirmed',
                 'items': [
-                    {'name': '叉燒飯', 'quantity': 1, 'price': 45},
-                    {'name': '港式奶茶', 'quantity': 1, 'price': 22}
+                    {'name': '叉燒飯', 'quantity': 1, 'unit_price': 45},
+                    {'name': '港式奶茶', 'quantity': 1, 'unit_price': 22}
                 ],
                 'total_price': 67,
                 'created_at': current_time - 1800,
@@ -518,13 +518,13 @@ def get_order_details(order_id):
                 {
                     'name': '炸豬扒飯',
                     'quantity': 1,
-                    'price': 48,
+                    'unit_price': 48,
                     'special_requirements': []
                 },
                 {
                     'name': '凍可樂', 
                     'quantity': 1,
-                    'price': 18,
+                    'unit_price': 18,
                     'special_requirements': []
                 }
             ],

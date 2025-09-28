@@ -1,11 +1,34 @@
 """
-Vercel 部署入口文件 - 簡化版本
+Vercel 部署入口文件 - 完整功能版本
 """
-from flask import Flask, send_from_directory
+import sys
 import os
 
-# 創建 Flask 應用
-app = Flask(__name__, static_folder='../static', static_url_path='/static')
+# 添加項目根目錄到 Python 路徑
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+# 設置工作目錄
+os.chdir(project_root)
+
+# 設置環境變量（如果在 Vercel 環境中沒有 .env 文件）
+os.environ.setdefault('FLASK_ENV', 'production')
+
+try:
+    # 導入完整的應用
+    from app import create_app
+    
+    # 創建應用實例
+    app = create_app('production')
+    
+    print("✅ 成功載入完整的 AI 語音點餐系統")
+    
+except Exception as e:
+    print(f"❌ 載入完整應用失敗，使用簡化版本: {e}")
+    
+    # 如果完整應用載入失敗，創建簡化版本
+    from flask import Flask, send_from_directory
+    app = Flask(__name__, static_folder='../static', static_url_path='/static')
 
 @app.route('/')
 def index():

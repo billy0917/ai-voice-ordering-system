@@ -294,13 +294,15 @@ def parse_order():
     "total_price": 總價格,
     "special_notes": "整體特殊說明"
   },
-  "upselling": [
-    {
-      "item": "推薦商品",
-      "reason": "推薦原因", 
-      "unit_price": 價格
-    }
-  ],
+  "upselling": {
+    "suggestions": [
+      {
+        "item": "推薦商品",
+        "reason": "推薦原因", 
+        "unit_price": 價格
+      }
+    ]
+  },
   "original_text": "原始語音文本"
 }
 
@@ -347,6 +349,15 @@ def parse_order():
                 
                 # 確保返回格式正確
                 if isinstance(parsed_response, dict) and 'order' in parsed_response:
+                    # 確保 upselling 格式正確
+                    if 'upselling' in parsed_response:
+                        if isinstance(parsed_response['upselling'], list):
+                            parsed_response['upselling'] = {
+                                'suggestions': parsed_response['upselling']
+                            }
+                    else:
+                        # 如果沒有 upselling 字段，添加默認結構
+                        parsed_response['upselling'] = {'suggestions': []}
                     return parsed_response
                 else:
                     # 如果格式不正確，創建標準格式
@@ -365,7 +376,7 @@ def parse_order():
                             'total_price': 0,
                             'special_notes': ai_response
                         },
-                        'upselling': [],
+                        'upselling': {'suggestions': []},
                         'original_text': text
                     }
             except json.JSONDecodeError:

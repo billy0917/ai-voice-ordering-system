@@ -258,10 +258,13 @@ def parse_order():
         import requests
         
         data = request.get_json()
-        if not data or 'text' not in data:
-            return {'success': False, 'error': '缺少文本數據'}, 400
+        if not data:
+            return {'success': False, 'error': '缺少請求數據'}, 400
         
-        text = data['text']
+        # 支持多種字段名稱
+        text = data.get('text') or data.get('transcription') or data.get('content')
+        if not text:
+            return {'success': False, 'error': '缺少文本數據', 'received_data': list(data.keys())}, 400
         openrouter_key = os.environ.get('OPENROUTER_API_KEY')
         
         if not openrouter_key:
@@ -273,19 +276,57 @@ def parse_order():
             'Content-Type': 'application/json'
         }
         
+        # 構建詳細的系統提示
+        system_prompt = """你是一個專業的港式茶餐廳點餐助手。請解析顧客的粵語點餐內容，並按以下格式返回JSON：
+
+{
+  "success": true,
+  "order": {
+    "items": [
+      {
+        "name": "菜品名稱",
+        "quantity": 數量,
+        "price": 預估價格,
+        "special_requirements": ["特殊要求1", "特殊要求2"],
+        "category": "主食/飲品/小食/甜品"
+      }
+    ],
+    "total_price": 總價格,
+    "special_notes": "整體特殊說明"
+  },
+  "upselling": [
+    {
+      "item": "推薦商品",
+      "reason": "推薦原因", 
+      "price": 價格
+    }
+  ],
+  "original_text": "原始語音文本"
+}
+
+港式茶餐廳常見菜品和價格參考：
+- 炸豬扒飯：$45-55
+- 叉燒飯：$40-50  
+- 咖喱雞飯：$42-52
+- 港式奶茶：$18-25
+- 凍檸茶：$20-28
+- 凍可樂：$15-22
+- 西多士：$25-35"""
+
         payload = {
-            'model': 'x-ai/grok-2-1212',
+            'model': 'anthropic/claude-3.5-sonnet',
             'messages': [
                 {
                     'role': 'system',
-                    'content': '你是一個專業的港式餐廳點餐助手。請解析顧客的點餐內容，提取菜品、數量、特殊要求等信息，並以JSON格式返回。'
+                    'content': system_prompt
                 },
                 {
                     'role': 'user',
-                    'content': f'請解析這個點餐內容：{text}'
+                    'content': f'請解析這個港式茶餐廳點餐內容：{text}'
                 }
             ],
-            'max_tokens': 500
+            'max_tokens': 1000,
+            'temperature': 0.3
         }
         
         response = requests.post(
@@ -299,16 +340,211 @@ def parse_order():
             result = response.json()
             ai_response = result['choices'][0]['message']['content']
             
-            return {
-                'success': True,
-                'parsed_order': ai_response,
-                'original_text': text
-            }
+            try:
+                # 嘗試解析 AI 返回的 JSON
+                import json
+                parsed_response = json.loads(ai_response)
+                
+                # 確保返回格式正確
+                if isinstance(parsed_response, dict) and 'order' in parsed_response:
+                    return parsed_response
+                else:
+                    # 如果格式不正確，創建標準格式
+                    return {
+                        'success': True,
+                        'order': {
+                            'items': [
+                                {
+                                    'name': '解析結果',
+                                    'quantity': 1,
+                                    'price': 0,
+                                    'special_requirements': [],
+                                    'category': '其他'
+                                }
+                            ],
+                            'total_price': 0,
+                            'special_notes': ai_response
+                        },
+                        'upselling': [],
+                        'original_text': text
+                    }
+            except json.JSONDecodeError:
+                # 如果無法解析為 JSON，返回文本格式
+                return {
+                    'success': True,
+                    'order': {
+                        'items': [
+                            {
+                                'name': '訂單解析',
+                                'quantity': 1,
+                                'price': 0,
+                                'special_requirements': [],
+                                'category': '解析結果'
+                            }
+                        ],
+                        'total_price': 0,
+                        'special_notes': ai_response
+                    },
+                    'upselling': [],
+                    'original_text': text,
+                    'raw_ai_response': ai_response
+                }
         else:
-            return {'success': False, 'error': f'AI 解析失敗: {response.status_code}'}, 500
+            return {'success': False, 'error': f'AI 解析失敗: {response.status_code} - {response.text}'}, 500
             
     except Exception as e:
         return {'success': False, 'error': f'解析錯誤: {str(e)}'}, 500
+
+# 訂單創建端點
+@app.route('/api/order/create', methods=['POST'])
+def create_order():
+    """創建新訂單"""
+    try:
+        data = request.get_json()
+        if not data:
+            return {'success': False, 'error': '缺少訂單數據'}, 400
+        
+        # 生成訂單ID
+        import time
+        import random
+        order_id = f"ORD{int(time.time())}{random.randint(100, 999)}"
+        
+        # 創建訂單記錄（簡化版本，實際應該存儲到數據庫）
+        order_record = {
+            'id': order_id,
+            'items': data.get('items', []),
+            'total_price': data.get('total_price', 0),
+            'special_notes': data.get('special_notes', ''),
+            'status': 'pending',
+            'created_at': time.time(),
+            'estimated_time': '15-20分鐘'
+        }
+        
+        return {
+            'success': True,
+            'order_id': order_id,
+            'status': 'pending',
+            'message': '訂單已成功創建',
+            'estimated_time': '15-20分鐘',
+            'order': order_record
+        }
+        
+    except Exception as e:
+        return {'success': False, 'error': f'創建訂單失敗: {str(e)}'}, 500
+
+# 獲取活躍訂單端點
+@app.route('/api/order/active', methods=['GET'])
+def get_active_orders():
+    """獲取活躍訂單列表"""
+    try:
+        # 模擬訂單數據（實際應該從數據庫獲取）
+        import time
+        current_time = time.time()
+        
+        sample_orders = [
+            {
+                'id': f'ORD{int(current_time-3600)}001',
+                'status': 'preparing',
+                'items': [
+                    {'name': '炸豬扒飯', 'quantity': 1, 'price': 48},
+                    {'name': '凍可樂', 'quantity': 1, 'price': 18}
+                ],
+                'total_price': 66,
+                'created_at': current_time - 3600,
+                'estimated_time': '5分鐘'
+            },
+            {
+                'id': f'ORD{int(current_time-1800)}002', 
+                'status': 'confirmed',
+                'items': [
+                    {'name': '叉燒飯', 'quantity': 1, 'price': 45},
+                    {'name': '港式奶茶', 'quantity': 1, 'price': 22}
+                ],
+                'total_price': 67,
+                'created_at': current_time - 1800,
+                'estimated_time': '10分鐘'
+            }
+        ]
+        
+        return {
+            'success': True,
+            'orders': sample_orders,
+            'total_count': len(sample_orders)
+        }
+        
+    except Exception as e:
+        return {'success': False, 'error': f'獲取訂單失敗: {str(e)}'}, 500
+
+# 更新訂單狀態端點
+@app.route('/api/order/<order_id>/status', methods=['PUT'])
+def update_order_status(order_id):
+    """更新訂單狀態"""
+    try:
+        data = request.get_json()
+        if not data or 'status' not in data:
+            return {'success': False, 'error': '缺少狀態信息'}, 400
+        
+        new_status = data['status']
+        valid_statuses = ['pending', 'confirmed', 'preparing', 'ready', 'delivered']
+        
+        if new_status not in valid_statuses:
+            return {'success': False, 'error': '無效的訂單狀態'}, 400
+        
+        # 模擬更新訂單狀態（實際應該更新數據庫）
+        import time
+        return {
+            'success': True,
+            'order_id': order_id,
+            'status': new_status,
+            'message': f'訂單狀態已更新為: {new_status}',
+            'updated_at': time.time()
+        }
+        
+    except Exception as e:
+        return {'success': False, 'error': f'更新狀態失敗: {str(e)}'}, 500
+
+# 獲取訂單詳情端點
+@app.route('/api/order/<order_id>', methods=['GET'])
+def get_order_details(order_id):
+    """獲取特定訂單詳情"""
+    try:
+        import time
+        
+        # 模擬訂單數據
+        order_details = {
+            'id': order_id,
+            'status': 'confirmed',
+            'items': [
+                {
+                    'name': '炸豬扒飯',
+                    'quantity': 1,
+                    'price': 48,
+                    'special_requirements': []
+                },
+                {
+                    'name': '凍可樂', 
+                    'quantity': 1,
+                    'price': 18,
+                    'special_requirements': []
+                }
+            ],
+            'total_price': 66,
+            'special_notes': '',
+            'created_at': time.time() - 900,
+            'estimated_time': '10分鐘',
+            'status_history': [
+                {'status': 'pending', 'timestamp': time.time() - 900},
+                {'status': 'confirmed', 'timestamp': time.time() - 600}
+            ]
+        }
+        
+        return {
+            'success': True,
+            'order': order_details
+        }
+        
+    except Exception as e:
+        return {'success': False, 'error': f'獲取訂單詳情失敗: {str(e)}'}, 500
 
 if __name__ == "__main__":
     app.run(debug=False)

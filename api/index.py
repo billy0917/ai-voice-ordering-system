@@ -3,6 +3,7 @@ Vercel 部署入口文件 - 完整功能版本
 """
 import sys
 import os
+from flask import request
 
 # 添加項目根目錄到 Python 路徑
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -119,6 +120,133 @@ def static_files(filename):
         return send_from_directory('../static', filename)
     except:
         return f'文件未找到: {filename}', 404
+
+# 添加語音識別 API 端點（用於 Vercel 環境）
+@app.route('/api/speech/transcribe', methods=['POST'])
+def transcribe_speech():
+    """語音識別端點 - 適用於 Vercel"""
+    try:
+        from speech_api import VercelSpeechService
+        
+        if 'audio' not in request.files:
+            return {'success': False, 'error': '沒有音頻文件'}, 400
+        
+        audio_file = request.files['audio']
+        if audio_file.filename == '':
+            return {'success': False, 'error': '沒有選擇文件'}, 400
+        
+        # 讀取音頻數據
+        audio_data = audio_file.read()
+        content_type = audio_file.content_type or 'audio/wav'
+        
+        # 使用語音識別服務
+        speech_service = VercelSpeechService()
+        result = speech_service.transcribe_audio(audio_data, content_type)
+        
+        if result['success']:
+            return {
+                'success': True,
+                'transcription': result['text'],
+                'confidence': result['confidence'],
+                'language': result['language']
+            }
+        else:
+            return {'success': False, 'error': result['error']}, 500
+            
+    except ImportError:
+        return {'success': False, 'error': '語音服務未配置'}, 500
+    except Exception as e:
+        return {'success': False, 'error': f'服務器錯誤: {str(e)}'}, 500
+
+@app.route('/api/speech/test', methods=['GET'])
+def test_speech_service():
+    """測試語音服務配置"""
+    try:
+        from speech_api import VercelSpeechService
+        
+        speech_service = VercelSpeechService()
+        if speech_service.validate_config():
+            token = speech_service.get_token()
+            if token:
+                return {
+                    'success': True,
+                    'message': 'Azure Speech Services 配置正確',
+                    'region': speech_service.azure_region
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': 'API 密鑰無效或網絡問題'
+                }
+        else:
+            return {
+                'success': False,
+                'error': 'Azure Speech Services 未配置'
+            }
+    except ImportError:
+        return {'success': False, 'error': '語音服務模組未找到'}, 500
+    except Exception as e:
+        return {'success': False, 'error': f'測試失敗: {str(e)}'}, 500
+
+# 添加 OpenRouter API 端點
+@app.route('/api/order/parse', methods=['POST'])
+def parse_order():
+    """訂單解析端點"""
+    try:
+        import requests
+        
+        data = request.get_json()
+        if not data or 'text' not in data:
+            return {'success': False, 'error': '缺少文本數據'}, 400
+        
+        text = data['text']
+        openrouter_key = os.environ.get('OPENROUTER_API_KEY')
+        
+        if not openrouter_key:
+            return {'success': False, 'error': 'OpenRouter API 未配置'}, 500
+        
+        # 調用 OpenRouter API
+        headers = {
+            'Authorization': f'Bearer {openrouter_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'model': 'x-ai/grok-2-1212',
+            'messages': [
+                {
+                    'role': 'system',
+                    'content': '你是一個專業的港式餐廳點餐助手。請解析顧客的點餐內容，提取菜品、數量、特殊要求等信息，並以JSON格式返回。'
+                },
+                {
+                    'role': 'user',
+                    'content': f'請解析這個點餐內容：{text}'
+                }
+            ],
+            'max_tokens': 500
+        }
+        
+        response = requests.post(
+            'https://openrouter.ai/api/v1/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result['choices'][0]['message']['content']
+            
+            return {
+                'success': True,
+                'parsed_order': ai_response,
+                'original_text': text
+            }
+        else:
+            return {'success': False, 'error': f'AI 解析失敗: {response.status_code}'}, 500
+            
+    except Exception as e:
+        return {'success': False, 'error': f'解析錯誤: {str(e)}'}, 500
 
 if __name__ == "__main__":
     app.run(debug=False)

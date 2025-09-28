@@ -121,13 +121,85 @@ def static_files(filename):
     except:
         return f'文件未找到: {filename}', 404
 
+# 直接在此處定義語音服務類
+class VercelSpeechService:
+    """適用於 Vercel 的語音識別服務"""
+    
+    def __init__(self):
+        self.azure_key = os.environ.get('AZURE_SPEECH_KEY')
+        self.azure_region = os.environ.get('AZURE_SPEECH_REGION', 'eastasia')
+        self.base_url = f"https://{self.azure_region}.stt.speech.microsoft.com"
+        
+    def validate_config(self):
+        """驗證配置"""
+        return bool(self.azure_key and self.azure_region)
+    
+    def transcribe_audio(self, audio_data, content_type="audio/wav"):
+        """語音識別"""
+        if not self.validate_config():
+            return {
+                'success': False,
+                'error': 'Azure Speech Services 未配置'
+            }
+        
+        try:
+            import requests
+            
+            headers = {
+                'Ocp-Apim-Subscription-Key': self.azure_key,
+                'Content-Type': content_type,
+                'Accept': 'application/json'
+            }
+            
+            url = f"{self.base_url}/speech/recognition/conversation/cognitiveservices/v1"
+            params = {
+                'language': 'zh-HK',
+                'format': 'detailed'
+            }
+            
+            response = requests.post(
+                url,
+                headers=headers,
+                params=params,
+                data=audio_data,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if result.get('RecognitionStatus') == 'Success':
+                    display_text = result.get('DisplayText', '')
+                    confidence = result.get('NBest', [{}])[0].get('Confidence', 0)
+                    
+                    return {
+                        'success': True,
+                        'text': display_text,
+                        'confidence': confidence,
+                        'language': 'zh-HK'
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': f"識別失敗: {result.get('RecognitionStatus')}"
+                    }
+            else:
+                return {
+                    'success': False,
+                    'error': f"API 請求失敗: {response.status_code} - {response.text}"
+                }
+                
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'語音識別錯誤: {str(e)}'
+            }
+
 # 添加語音識別 API 端點（用於 Vercel 環境）
 @app.route('/api/speech/transcribe', methods=['POST'])
 def transcribe_speech():
     """語音識別端點 - 適用於 Vercel"""
     try:
-        from speech_api import VercelSpeechService
-        
         if 'audio' not in request.files:
             return {'success': False, 'error': '沒有音頻文件'}, 400
         
@@ -153,8 +225,6 @@ def transcribe_speech():
         else:
             return {'success': False, 'error': result['error']}, 500
             
-    except ImportError:
-        return {'success': False, 'error': '語音服務未配置'}, 500
     except Exception as e:
         return {'success': False, 'error': f'服務器錯誤: {str(e)}'}, 500
 
@@ -162,29 +232,21 @@ def transcribe_speech():
 def test_speech_service():
     """測試語音服務配置"""
     try:
-        from speech_api import VercelSpeechService
-        
         speech_service = VercelSpeechService()
         if speech_service.validate_config():
-            token = speech_service.get_token()
-            if token:
-                return {
-                    'success': True,
-                    'message': 'Azure Speech Services 配置正確',
-                    'region': speech_service.azure_region
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': 'API 密鑰無效或網絡問題'
-                }
+            return {
+                'success': True,
+                'message': 'Azure Speech Services 配置正確',
+                'region': speech_service.azure_region,
+                'key_configured': bool(speech_service.azure_key)
+            }
         else:
             return {
                 'success': False,
-                'error': 'Azure Speech Services 未配置'
+                'error': 'Azure Speech Services 未配置',
+                'azure_key': bool(os.environ.get('AZURE_SPEECH_KEY')),
+                'azure_region': os.environ.get('AZURE_SPEECH_REGION', 'not set')
             }
-    except ImportError:
-        return {'success': False, 'error': '語音服務模組未找到'}, 500
     except Exception as e:
         return {'success': False, 'error': f'測試失敗: {str(e)}'}, 500
 

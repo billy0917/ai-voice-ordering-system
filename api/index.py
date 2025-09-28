@@ -297,9 +297,9 @@ def parse_order():
   "upselling": {
     "suggestions": [
       {
-        "item": "推薦商品",
-        "reason": "推薦原因", 
-        "unit_price": 價格
+        "item": "推薦商品名稱",
+        "reason": "推薦原因（這會成為顯示消息）", 
+        "price": 價格
       }
     ]
   },
@@ -352,9 +352,25 @@ def parse_order():
                     # 確保 upselling 格式正確
                     if 'upselling' in parsed_response:
                         if isinstance(parsed_response['upselling'], list):
-                            parsed_response['upselling'] = {
-                                'suggestions': parsed_response['upselling']
-                            }
+                            # 轉換字段名以匹配前端期待
+                            suggestions = []
+                            for suggestion in parsed_response['upselling']:
+                                converted = {
+                                    'message': suggestion.get('reason', suggestion.get('item', '推薦商品')),
+                                    'price': suggestion.get('price', suggestion.get('unit_price', 0))
+                                }
+                                suggestions.append(converted)
+                            parsed_response['upselling'] = {'suggestions': suggestions}
+                        elif isinstance(parsed_response['upselling'], dict) and 'suggestions' in parsed_response['upselling']:
+                            # 轉換 suggestions 內的字段
+                            suggestions = []
+                            for suggestion in parsed_response['upselling']['suggestions']:
+                                converted = {
+                                    'message': suggestion.get('reason', suggestion.get('item', '推薦商品')),
+                                    'price': suggestion.get('price', suggestion.get('unit_price', 0))
+                                }
+                                suggestions.append(converted)
+                            parsed_response['upselling']['suggestions'] = suggestions
                     else:
                         # 如果沒有 upselling 字段，添加默認結構
                         parsed_response['upselling'] = {'suggestions': []}

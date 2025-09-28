@@ -353,6 +353,28 @@ def parse_order():
 4. 生成合理的追加銷售建議
 5. 如果有不清楚的地方，設置 clarification_needed: true
 
+### 智能推薦加購策略：
+**配餐建議**：
+- 只點飲品 → 推薦：薯條($18)、牛油多士($18)、雞蛋三明治($25)
+- 只點主食 → 推薦：凍檸茶($18)、奶茶($22)、例湯($12)
+- 點了炸類食物 → 推薦：清爽飲品消膩
+- 點了麵條/河粉 → 推薦：熱湯或例湯
+
+**時段建議**：
+- 早餐時段 → 推薦：咖啡、厚多士、煎蛋
+- 下午茶 → 推薦：西多士、菠蘿包、奶茶
+- 晚餐 → 推薦：例湯、飲品組合
+
+**價位建議**：
+- 消費$30-50 → 推薦加飲品($15-25)
+- 消費$50+ → 推薦升級套餐或甜品
+- 消費少於$30 → 推薦小食補足($12-18)
+
+**健康搭配**：
+- 油膩食物 → 推薦無糖/少糖飲品
+- 乾糧食物 → 推薦湯品或多汁飲品
+- 單一類型 → 推薦營養均衡的配菜
+
 ### 例子：
 **輸入：** "唔該我要個炸豬扒飯加杯凍奶茶少甜走冰"
 **輸出：**
@@ -390,8 +412,13 @@ def parse_order():
     "suggestions": [
       {
         "item": "薯條",
-        "reason": "炸豬扒飯配薯條很受歡迎",
+        "reason": "炸豬扒飯配薯條很受歡迎，金黃香脆！",
         "price": 18.0
+      },
+      {
+        "item": "例湯",
+        "reason": "今日例湯暖胃開胃，完美搭配！",
+        "price": 12.0
       }
     ]
   },
@@ -456,6 +483,7 @@ def parse_order():
                             suggestions = []
                             for suggestion in parsed_response['upselling']:
                                 converted = {
+                                    'item': suggestion.get('item', '推薦商品'),
                                     'message': suggestion.get('reason', suggestion.get('item', '推薦商品')),
                                     'price': suggestion.get('price', suggestion.get('unit_price', 0))
                                 }
@@ -466,6 +494,7 @@ def parse_order():
                             suggestions = []
                             for suggestion in parsed_response['upselling']['suggestions']:
                                 converted = {
+                                    'item': suggestion.get('item', '推薦商品'),
                                     'message': suggestion.get('reason', suggestion.get('item', '推薦商品')),
                                     'price': suggestion.get('price', suggestion.get('unit_price', 0))
                                 }

@@ -1,0 +1,91 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 環境變量和敏感信息
+.env
+.env.local
+.env.production
+.env.staging
+*.key
+*.pem
+
+# 日誌文件
+logs/
+*.log
+
+# 數據庫
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# 臨時文件
+tmp/
+temp/
+.tmp
+.cache
+
+# Node.js (如果使用)
+node_modules/
+npm-debug.log*
+
+# 測試覆蓋率
+.coverage
+htmlcov/
+
+# 虛擬環境
+venv/
+env/
+ENV/
+
+# 打包文件
+*.zip
+v1.zip
+AI Ordering System.zip
+
+# Kiro 配置
+.kiro/
+
+# VSCode 擴展和配置
+.vscode/
+AppData/
+*.lnk
+
+# Windows 用戶目錄
+Users/
+Documents/
+Desktop/
+

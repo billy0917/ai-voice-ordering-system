@@ -1,0 +1,169 @@
+/* 性能優化版本 - 移除GPU密集效果 */
+
+/* 禁用所有transform和filter效果 */
+* {
+    will-change: auto !important;
+}
+
+/* 簡化動畫 */
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slide-up {
+    animation: slideUp 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 移除所有transform效果 */
+.hover\:scale-105:hover,
+.transform,
+.hover\:scale-110:hover {
+    transform: none !important;
+}
+
+/* 簡化按鈕效果 */
+button:hover {
+    opacity: 0.9;
+    transition: opacity 0.1s ease;
+}
+
+/* 移除陰影效果 */
+.shadow-2xl,
+.shadow-lg,
+.hover\:shadow-emerald-500\/25:hover,
+.hover\:shadow-slate-500\/25:hover {
+    box-shadow: none !important;
+}
+
+/* 簡化玻璃效果 */
+.glass-morphism,
+.glass-card {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* 移除複雜漸變 */
+.bg-gradient-to-br,
+.bg-gradient-to-r {
+    background: var(--fallback-color, #10b981) !important;
+}
+
+/* 簡化錄音按鈕 */
+#recordBtn {
+    background: #10b981 !important;
+    transition: background-color 0.1s ease !important;
+}
+
+#recordBtn:hover {
+    background: #059669 !important;
+}
+
+/* 移除脈衝動畫 */
+.recording-pulse {
+    animation: none !important;
+}
+
+/* 簡化進度條 */
+#confidenceBar {
+    transition: width 0.2s ease !important;
+}
+
+/* 移除旋轉動畫，使用簡單的閃爍 */
+.animate-spin {
+    animation: blink 1s infinite !important;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+}
+
+/* 優化圖片渲染 */
+img {
+    image-rendering: auto;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+}
+
+/* 禁用硬件加速的屬性 */
+.no-gpu {
+    transform: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    will-change: auto !important;
+}
+
+/* 應用到所有可能消耗GPU的元素 */
+.glass-morphism,
+.glass-card,
+button,
+.animate-fade-in,
+.animate-slide-up {
+    transform: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    will-change: auto !important;
+}
+
+/* 自定義滾動條樣式 */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.5) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 116, 139, 0.5);
+    border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(100, 116, 139, 0.7);
+}
+
+/* 確保訂單內容完整顯示 */
+#orderDisplay {
+    min-height: 200px !important;
+    max-height: 500px !important;
+}
+
+#orderSection {
+    min-height: auto !important;
+    height: auto !important;
+}
+
+/* 響應式文字換行 */
+.break-words {
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+}
+
+/* 確保flex項目不被壓縮 */
+.flex-shrink-0 {
+    flex-shrink: 0 !important;
+}
+
+.min-w-0 {
+    min-width: 0 !important;
+}
